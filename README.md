@@ -155,6 +155,140 @@ This design **uses Git's own mechanisms** (branches, subrepos, remote pushes) to
 
 ---
 
+## Index-Repo Design (Revision 2)
+
+This version redesigns the subrepo layout to simplify maintenance, enable partial Git operations, and support automation for fetching, updating, and distributing content. This is now the mainstream approach for implentation.
+
+---
+
+### 🌳 Repo Tree Structure
+
+_main repo
+
+_info subrepo _node-info db (csv) _metadata db (json or csv)
+
+_data subrepo _branch per resource
+
+_script subrepo _source db (csv): resource id, source _fetch script _db update automation
+
+### 📌 Subrepo Roles
+
+- **_info subrepo**
+  - `node-info db`: CSV listing peer IDs, certification hashes, instance reputations.
+  - `metadata db`: JSON/CSV mapping resource IDs to version info, commit hashes, sizes.
+
+- **_data subrepo**
+  - Each *branch* contains one resource's entire history.
+  - Clients/peers can `git fetch` or `git pull` only the branches they need.
+  - Greatly reduces bandwidth and storage requirements.
+
+- **_script subrepo**
+  - `source db`: Maps resource IDs to upstream/original sources.
+  - Automation scripts for:
+    - Fetching from source
+    - Committing updates
+    - Updating metadata in `_info`
+
+---
+
+### 🗂️ Node File Tree Examples
+
+#### <client node>
+
+_client executable _config directory _log directory (optional) _repo tree _info subrepo (readonly) _databases (updated on each request) _data subrepo (readonly) _branches per resource
+
+✅ Clients only **read** data and info.  
+✅ Local decisions about what to fetch are guided by `_info` data.  
+✅ Efficient selective sync.
+
+---
+
+#### <peer node>
+
+_peer executable _config directory _log directory (mandatory) _repo tree _info subrepo (readonly) _data subrepo (readonly)
+
+✅ Same repo structure as clients.  
+✅ Responds to broadcasts with avasc score.  
+✅ Serves resources locally from `_data`.  
+✅ Logs uptime to maintain avasc score.
+
+---
+
+#### <instance node>
+
+_instance node executable _config directory _log directory (mandatory) _full repo tree _info subrepo (read/write) _data subrepo (read/write) _script subrepo
+
+✅ Maintains authoritative `_info` and `_data`.  
+✅ Automates crawling, fetching, committing, and pushing to other instances.  
+✅ Uses `_script` subrepo for automation.
+
+---
+
+### ⚡️ Design Advantages
+
+✅ Separation of metadata, content, and automation.  
+✅ Lightweight, selective Git fetch/pull.  
+✅ Easy federation between instance nodes via Git push.  
+✅ Local cache stays up to date without needing a central server.  
+✅ Supports automated resource acquisition from source URLs.
+
+---
+
+### 🤖 Automation Flow Example
+
+1. Instance fetches from a *source* using `_script/fetch`.
+2. Commits new/updated content to `_data` subrepo.
+3. Updates `_info` metadata DB (version, size, commit hash).
+4. Pushes repo updates to other trusted instances.
+
+---
+
+### 🧭 Client/Peer Usage Flow
+
+- On request:
+  - Check `_info` subrepo for latest version/commit hash.
+  - If already cached → load locally.
+  - Otherwise → fetch required branch from instance or other peers.
+
+---
+
+### 🔗 Notes on Federation
+
+- Instances share repos via Git push/pull.  
+- Peers/clients can clone and selectively fetch.  
+- Metadata updates are small and quick to sync.
+
+---
+
+### 💡 Optional Ideas
+
+- Scripts in `_script` can include:
+  - Bandwidth measurement
+  - Avasc scoring automation
+  - Cache cleaning based on LRU/size limits
+- `_info` can be designed to support JSON for richer metadata.
+
+---
+
+### ⚠️ Important
+
+- **Clients and Peers:** should treat `_info` and `_data` as read-only.  
+- **Instances:** are responsible for writing, updating, and sharing.  
+- Automation requires careful access control and key management.
+
+---
+
+## 📌 Example Use Cases
+
+✅ Low-power home servers acting as peers.  
+✅ Instance nodes on more capable hardware.  
+✅ Resource federation across organizations or communities.  
+✅ Reducing redundant large CDN traffic.  
+
+---
+
+---
+
 ## 📈 Avasc (Availability Score) System
 
 Ensures reliable peers by measuring uptime and stability.
