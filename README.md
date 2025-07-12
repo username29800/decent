@@ -4,211 +4,238 @@
 
 ---
 
-## Terminology
+## ⚡️ Overview
 
-- **dCDN**: *dynamic CDN* — a constantly evolving network with countless nodes and federated instances.
-- **Broadcast**: Sending requests to all local peers.
-- **Resource**: Web page, image, JavaScript, etc.
-- **thr** (*threshold*): Peer-defined availability threshold.
-- **avasc** (*availability score*):  
-  - Initial: `75 * shared bandwidth (MB/s)`.
-  - Otherwise: `{7-day average of (daily uptime (h) / 24h)} * shared bandwidth`.
-  - New nodes assume 18h uptime for the past 7 days.
+**Decent** is a user-driven, Free and Open Source Software (FOSS) content distribution network that combines layered P2P architecture with Git-based versioning.  
+It is designed to reduce the energy footprint of traditional CDN infrastructure by turning existing user devices into voluntary cache nodes and instance servers.
 
----
-
-## Description
-
-**Decent** (from *decentralization*) is a user-driven, FOSS content distribution network based on partial P2P and layered decentralization.
-
-It aims to:
-1. Lower electricity demand by reducing the number of power-hungry global CDN servers.
-2. Replace them with voluntary, large-scale networks run by users themselves.
-3. Provide a rational hobby platform for sysadmins and home-server enthusiasts.
-
-**Network architecture:**
-- **P2P layer**:  
-  - *Peers*: local network-level caches.
-  - *Clients*: retrieve data from peers.
-- **Instance layer**:  
-  - Single or multiple instances with Git repositories, nameserver DB, and version DB.
-  - Runs on already-in-use devices (smartphones, IoT, energy-efficient home servers).
-  - Version management uses Git.
-
-**Design highlights:**
-- Transactions are minimized to save power.
-- Peer nodes can set:
-  - Shared bandwidth threshold (affects avasc).
-  - Maximum acceptable file size.
-- If no suitable peer is available (e.g. file too large), client falls back to nameserver.
-
-**Cache policy:**
-- Local caches for efficiency.
-- 2 GB default limit; oldest/least-maintained subrepo evicted first.
-- Cache structure mirrors the nameserver’s Git sub-repo tree.
-- Possible to clone nameserver’s repository directly.
+**Goals:**
+- Sustainable, resilient distribution of public/static resources.
+- Lower power usage by avoiding always-on, high-power CDN server farms.
+- Foster sysadmin-level hobby participation via open federation.
 
 ---
 
-## Project Goals
+## 📚 Terminology
 
-- **Stability and sustainability** for public/static content distribution.
-- **Energy savings** by replacing traditional CDN servers.
-- **A fun, rational hobby** for sysadmins and home-server runners.
+- **dCDN** (*dynamic CDN*): A continuously evolving mesh of nodes, peers, and federated instances that connect and disconnect organically.
+- **Broadcast**: Sending a request to all locally reachable peers.
+- **Resource**: Web page, image, JavaScript file, etc.
+- **thr** (*threshold*): The minimum avasc score required for a peer to accept a request.
+- **avasc** (*availability score*): 
+  - New nodes start with `75 × shared bandwidth (MB/s)`.
+  - Afterward: `{7-day average uptime fraction} × shared bandwidth`.
+  - New peers are treated as if they had 18h uptime over 7 days.
 
 ---
 
-## Procedure
+## 🌐 Architecture
 
-> Clients get latest commit hash and file size from an instance node before broadcast.
+Decent adopts a **layered, hybrid approach**:
 
-### Client
-1. **Initialize**: Internal request to start procedure.
-2. **Version check**: Request from version server (part of nameserver).
-3. **Cache check**: If local cache has the latest version, load directly.
-4. **Broadcast**: Request to P2P network (includes resource ID, size, commit hash, avasc threshold).
+### P2P Layer
+- **Clients**: Request resources; maintain local cache.
+- **Peers**: Local cache nodes; can serve resources to clients.
 
-### Peer
-- Listen for broadcasts.
-- Check:
+This layer is intended to **maximize locality** and reduce cross-network traffic.
+
+### Instance Layer
+- Hosts the **nameserver** service.
+- Stores resources as **Git repositories** with subrepo structure.
+- Maintains:
+  - Nameserver database (peer metadata, certification hashes, reputation)
+  - Version database (resource IDs, commit hashes, repo mapping)
+
+---
+
+## ⚙️ Design Principles
+
+- **Energy efficiency**: Uses already-on devices (phones, DIY IoT, home servers).
+- **Minimized traffic**: Local-first cache policy, P2P sharing.
+- **Layered decentralization**: Instance federation via Git pushes.
+- **Flexible participation**: Power users can choose to host peers or instances.
+
+---
+
+## 🗂️ Cache and Repository Structure
+
+- **Local Cache**:
+  - Default size limit: 2 GB.
+  - Deletion policy: Least-maintained subrepo first.
+  - Git subrepo tree matching the nameserver's structure.
+
+- **Nameserver/Instance Storage**:
+  - Main Git repository with subrepos for each resource.
+  - Cloneable by any node to sync data.
+
+This design **uses Git's own mechanisms** (branches, subrepos, remote pushes) to maintain consistency with minimal traffic.
+
+---
+
+## 🛰️ Protocol Flow
+
+> Client starts by querying the latest version from the instance (nameserver).
+
+### 📌 Client Side
+1. **Initialization**: Internal trigger; calls other functions.
+2. **Version Request**: Ask nameserver for latest commit hash and size.
+3. **Local Cache Check**: Load if latest.
+4. **Broadcast**: Send request to local peers with:
+   - Resource ID
+   - Size
+   - Commit hash
+   - Avasc threshold
+
+### 📌 Peer Side
+- Listens for broadcasts.
+- Verifies:
   - Avasc threshold.
-  - File size limits.
+  - File size limit.
   - Resource availability.
-  - Version match.
-- Respond with Peer ID and avasc value.
+  - Commit hash match.
+- Responds with Peer ID and avasc value.
 
-### Client
-- Collect peer responses.
-- Select peer (fastest or highest avasc).
-- Connect and fetch resource.
+### 📌 Client Response Handling
+- Collects peer responses.
+- Selects peer (fastest response or highest avasc).
+- Requests and downloads resource.
 
-### Timeout Handling
-- If no response after 3 broadcasts:
-  - Send update broadcast with lowered threshold.
-  - Enter sleep mode after timeout.
+### 📌 Timeout Handling
+- On silence after 3 attempts:
+  - Broadcast with lowered threshold.
+  - Enter sleep mode post-timeout.
 
-### Fallback to Nameserver
-- When peer retrieval fails:
-  - Direct request to subscribed nameserver.
-
-### Peer Updates
-- Listen for update broadcasts.
-- Respond with availability if threshold met.
-
-### Client Updates
-- Receive availability responses.
-- Select peer and send update request.
-
-### Peer Update Connection
-- On receiving update request:
-  - Fetch resource from instance.
-  - Send to client.
-  - Measure bandwidth and update avasc.
+### 📌 Fallback
+- If P2P fails, client queries its subscribed nameserver.
 
 ---
 
-## Decentralization
+## 🗃️ Decentralization Model
 
-**Concept summary:**
+**Instance Node = Nameserver + Storage + Federation**
 
-- **Instance**:
-  - Git repo (stores resources as subrepos).
-  - Nameserver database (list of Peer IDs, certification hashes, instance IDs, reputations).
-  - Version database (resource IDs, sizes, subrepo names, latest commit hashes).
-  - Nameserver service.
-- **Federation**:
-  - Instances push updates to trusted peers listed in their nameserver.
-- **Nameserver daemon**:
-  - Handles all decentralization tasks.
+- Git repository with subrepos for resources.
+- Nameserver DB:
+  - Peer IDs
+  - Certification hashes
+  - Reputation
+- Version DB:
+  - Resource IDs
+  - Sizes
+  - Repo identifiers
+  - Latest commit hashes
 
-**Avasc integrity**:
-- On shutdown, peer receives random hash from instance.
-- Hash must match on next startup; otherwise, avasc drops to 25.
-- Prevents uptime spoofing and accounts for abrupt shutdowns.
+**Federation:**
+- Trusted instances push changes to one another automatically.
 
----
-
-## Role Integration
-
-**Client-Peer Integration**
-- Users are clients first.
-- Check latest version via instance, then local cache.
-- If not cached, query local peers.
-- Integrated nodes foster local traffic efficiency.
-- Integrated peers maintain avasc scores.
-
-**Instance Integration**
-- *Not recommended* due to traffic/power demands.
+**Nameserver Daemon:**
+- Single executable managing:
+  - Resource commits
+  - Subrepo creation
+  - DB updates
+  - Federation pushes
 
 ---
 
-## Index Repo
+## 💾 Index Repo Design (Experimental)
 
-An experimental alternative implementation.
+**Alternative to separate DB approach.**
 
-- Each client/instance maintains an **index-repo**:
-  - Same subrepo structure under the main repo.
+- Each client/instance keeps an **index-repo**:
+  - Same subrepo structure as instance's main repo.
   - Three branches per subrepo:
-    - **update**: Scripts (source addresses) for fetching latest.
-    - **info**: Database entries with version, size.
-    - **cache**: Stores cached resources.
-- **Advantages**:
-  - Simplifies node structure.
-  - Instance nodes need only one repo (can be pushed/fetched via Git).
+    - **update**: Scripts to fetch directly from original source.
+    - **info**: Version metadata (e.g. `20240115-1-instanceID`) and size.
+    - **cache**: Actual resource storage.
+
+**Advantages:**
+- Eliminates need for multiple DBs.
+- Simplifies instance-to-instance synchronization.
+- Entire state in one Git repo; federated via standard Git push/pull.
 
 ---
 
-## Connection Quality Measurement
+## 📈 Avasc (Availability Score) System
 
-- **Avasc** measures peer stability.
-- Each peer receives a random hash on shutdown:
-  - Must match on reconnect.
-  - Sudden power losses drop avasc to 25.
-- **Daily decrement**:
-  - Avasc drops by 1 for each ungraceful disconnect.
-  - Resets at midnight (requires client restart).
-- **Logging**:
-  - Peer/instance clients maintain daily start/termination logs.
+Ensures reliable peers by measuring uptime and stability.
 
----
+- Each shutdown issues a random hash to the peer.
+- On reconnect:
+  - Hash must match.
+  - Mismatch → avasc drops to 25.
+- Sudden power loss or kill → no termination timestamp → avasc penalty.
+- Daily decrement: -1 per ungraceful disconnect, reset at midnight.
 
-## Social Network (Optional & Discouraged)
-
-> **WARNING:** This is strongly *discouraged* to implement. May not be available for a long time.  
-> **NOTE:** IRC is strongly recommended instead.
-
-**Concept**:
-- Decent Social Network Service (*dsns*).
-- Optional for instance nodes.
-- Uses Git for posts/threads:
-  - Each peer has its own branch.
-  - Authenticated pushes to instance nodes.
-  - Federation spreads changes via git push.
-- Extra branches:
-  - **trending** and **news** for curation.
-- **Requirements**:
-  - Suitable only for powerful nodes (desktops).
-  - Configurable via nameserver DB subrepo.
+**Logs:**
+- Peer/instance clients maintain daily start/stop logs for uptime tracking.
 
 ---
 
-## License
+## 🔄 Role Integration
+
+**Client-Peer Integration:**
+- Default mode for typical users.
+- Always tries:
+  1. Latest version info via instance.
+  2. Local cache.
+  3. Nearest peers.
+- Integrated nodes improve local traffic efficiency and lower external dependency.
+
+**Instance Integration:**
+- *Discouraged* on small devices.
+- Traffic-heavy; better on dedicated/powerful nodes.
+
+---
+
+## 🚨 Social Network Feature (Experimental & Discouraged)
+
+> **WARNING:** Strongly discouraged. May not be implemented soon.  
+> **NOTE:** IRC is recommended for real use.
+
+**Decent SNS Concept:**
+- Optional feature for powerful instance nodes.
+- Entirely Git-based:
+  - Each peer ID = separate branch.
+  - Posts/threads stored in `dsns` repo outside main content repo.
+- Federation via Git push:
+  - Trending/news branches curated from most popular posts.
+
+**Resource-Intensive:**
+- Suitable only for desktops or powerful servers.
+- Optional, configurable via nameserver DB subrepo.
+
+---
+
+## 💡 Why Git?
+
+- Battle-tested, distributed, versioned storage.
+- Familiar toolset for power users.
+- Reduces need for custom database syncing.
+- Federation-friendly by design.
+
+---
+
+## 📜 License
 
 Free and Open Source Software (FOSS).  
-Specific license to be determined.
+*Specific license TBD.*
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
-We welcome developers, tinkerers, and energy-conscious sysadmins!  
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines (coming soon).
+We welcome:
+- Developers
+- Tinkerers
+- Energy-conscious sysadmins
+
+Check out [CONTRIBUTING.md](CONTRIBUTING.md) (coming soon).
 
 ---
 
-## Contact
+## 📬 Contact
 
-- Issues and discussions: [GitHub Issues](./issues)
-- Recommended communication for instance nodes: **IRC**
+- Issues and feature discussions: [GitHub Issues](./issues)
+- Preferred live communication for instance node operators: **IRC**
 
 ---
