@@ -162,21 +162,21 @@ This version redesigns the subrepo layout to simplify maintenance, enable partia
 ---
 
 ### 🌳 Repo Tree Structure
-
-_main repo
-
-__info subrepo
-___node-info db / csv
-___metadata db / json or csv
-
-__data subrepo
-___branch per resource
-
-__script subrepo
-___source db / csv: resource id, source
-___fetch script
-___db update automation
-
+\
+_main repo\
+\
+__info subrepo\
+___node-info db / csv\
+___metadata db / json or csv\
+\
+__data subrepo\
+___branch per resource\
+\
+__script subrepo\
+___source db / csv: resource id, source\
+___fetch script\
+___db update automation\
+\
 ### 📌 Subrepo Roles
 
 - **_info subrepo**
@@ -200,15 +200,15 @@ ___db update automation
 ### 🗂️ Node File Tree Examples
 
 #### <client node>
-
-_client executable
-_config dir
-_log dir(optional)
-_repo tree
-__info subrepo (readonly)
-___databases(updated every request)
-__data subrepo (probably readonly)
-___resource per branch
+\
+_client executable\
+_config dir\
+_log dir(optional)\
+_repo tree\
+__info subrepo (readonly)\
+___databases(updated every request)\
+__data subrepo (probably readonly)\
+___resource per branch\
 
 ✅ Clients only **read** data and info.  
 ✅ Local decisions about what to fetch are guided by `_info` data.  
@@ -218,10 +218,10 @@ ___resource per branch
 
 #### <peer node>
 
-_peer executable
-_log dir(mandatory)
-_config dir
-_repo tree (same as the above)
+_peer executable\
+_log dir(mandatory)\
+_config dir\
+_repo tree (same as the above)\
 
 ✅ Same repo structure as clients.  
 ✅ Responds to broadcasts with avasc score.  
@@ -231,12 +231,12 @@ _repo tree (same as the above)
 ---
 
 #### <instance node>
-
-_instance node executable
-_log dir(mandatory)
-_config dir
-_full repo tree (as described in the specification)
-
+\
+_instance node executable\
+_log dir(mandatory)\
+_config dir\
+_full repo tree (as described in the specification)\
+\
 ✅ Maintains authoritative `_info` and `_data`.  
 ✅ Automates crawling, fetching, committing, and pushing to other instances.  
 ✅ Uses `_script` subrepo for automation.
