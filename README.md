@@ -162,7 +162,7 @@ This version redesigns the subrepo layout to simplify maintenance, enable partia
 ---
 
 ### 🌳 Repo Tree Structure
-\
+
 _main repo\
 \
 __info subrepo\
@@ -176,7 +176,7 @@ __script subrepo\
 ___source db / csv: resource id, source\
 ___fetch script\
 ___db update automation\
-\
+
 ### 📌 Subrepo Roles
 
 - **_info subrepo**
@@ -200,7 +200,7 @@ ___db update automation\
 ### 🗂️ Node File Tree Examples
 
 #### <client node>
-\
+
 _client executable\
 _config dir\
 _log dir(optional)\
@@ -231,12 +231,12 @@ _repo tree (same as the above)\
 ---
 
 #### <instance node>
-\
+
 _instance node executable\
 _log dir(mandatory)\
 _config dir\
 _full repo tree (as described in the specification)\
-\
+
 ✅ Maintains authoritative `_info` and `_data`.  
 ✅ Automates crawling, fetching, committing, and pushing to other instances.  
 ✅ Uses `_script` subrepo for automation.
